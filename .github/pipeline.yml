@@ -1,0 +1,27 @@
+name: S3 Bucket Antivirus Lambda
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  ARTIFACT_NAME: s3-bucket-av-lambda
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+
+      - name: Generate version information
+        run: |
+          mkdir build
+          bin/generate_git_version_name.sh > version.properties
+          cat version.properties
+
+      - name: Build
+        run: |
+          make
