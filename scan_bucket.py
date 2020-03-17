@@ -65,11 +65,7 @@ def scan_object(lambda_client, lambda_function_name, s3_bucket_name, key_name):
 
     print("Scanning: {}/{}".format(s3_bucket_name, key_name))
     s3_event = format_s3_event(s3_bucket_name, key_name)
-    lambda_invoke_result = lambda_client.invoke(
-        FunctionName=lambda_function_name,
-        InvocationType="Event",
-        Payload=json.dumps(s3_event),
-    )
+    lambda_invoke_result = lambda_client.invoke(FunctionName=lambda_function_name, InvocationType="Event", Payload=json.dumps(s3_event),)
     if lambda_invoke_result["ResponseMetadata"]["HTTPStatusCode"] != 202:
         print("Error invoking lambda: {}".format(lambda_invoke_result))
 
@@ -77,28 +73,33 @@ def scan_object(lambda_client, lambda_function_name, s3_bucket_name, key_name):
 # Format an S3 Event to use when invoking the lambda function
 # https://docs.aws.amazon.com/AmazonS3/latest/dev/notification-content-structure.html
 def format_s3_event(s3_bucket_name, key_name):
-    s3_event = {
-        "Records": [
-            {"s3": {"bucket": {"name": s3_bucket_name}, "object": {"key": key_name}}}
-        ]
-    }
+    s3_event = {"Records": [{"s3": {"bucket": {"name": s3_bucket_name}, "object": {"key": key_name}}}]}
     return s3_event
 
 
-def main(lambda_function_name, s3_bucket_name, limit):
+def main(lambda_function_name, s3_bucket_name, limit, profile, region):
+    # Configure boto with profile defined in ~/.aws/config
+    if profile:
+        print("Setting boto session with '{}' profile and region '{}'".format(profile, region))
+        boto3.setup_default_session(profile_name=profile, region_name=region)
+    else:
+        print("Setting boto session with region '{}'".format(region))
+        boto3.setup_default_session(region_name=region)
+
     # Verify the lambda exists
     lambda_client = boto3.client("lambda")
     try:
         lambda_client.get_function(FunctionName=lambda_function_name)
-    except Exception:
+    except Exception as exception:
         print("Lambda Function '{}' does not exist".format(lambda_function_name))
+        print(exception)
         sys.exit(1)
 
     # Verify the S3 bucket exists
     s3_client = boto3.client("s3")
     try:
         s3_client.head_bucket(Bucket=s3_bucket_name)
-    except Exception:
+    except Exception as exception:
         print("S3 Bucket '{}' does not exist".format(s3_bucket_name))
         sys.exit(1)
 
@@ -113,14 +114,13 @@ def main(lambda_function_name, s3_bucket_name, limit):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scan an S3 bucket for viruses.")
     parser.add_argument(
-        "--lambda-function-name",
-        required=True,
-        help="The name of the lambda function to invoke",
+        "--lambda-function-name", required=True, help="The name of the lambda function to invoke",
     )
-    parser.add_argument(
-        "--s3-bucket-name", required=True, help="The name of the S3 bucket to scan"
-    )
+    parser.add_argument("--s3-bucket-name", required=True, help="The name of the S3 bucket to scan")
     parser.add_argument("--limit", type=int, help="The number of records to limit to")
+
+    parser.add_argument("--profile", help="The AWS profile from ~/.aws/config to use")
+    parser.add_argument("--region", help="The AWS region to configure as default", default="eu-west-1")
     args = parser.parse_args()
 
-    main(args.lambda_function_name, args.s3_bucket_name, args.limit)
+    main(args.lambda_function_name, args.s3_bucket_name, args.limit, args.profile, args.region)
