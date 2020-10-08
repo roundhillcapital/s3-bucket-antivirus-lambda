@@ -13,8 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v1
 
-      - name: Build Lambda functions
-      - name: Create Archive
+      - name: Build Lambda function
         run: |
           make archive
 
