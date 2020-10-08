@@ -1,40 +1,26 @@
 name: S3 Bucket Antivirus Lambda
 
-on:
-  push:
-    tags:
-      - "v*"
+on: workflow_dispatch
+
+env:
+  REPO_BUCKET: s3://lambda-cfn-repository.rentpal
 
 jobs:
-  build-release:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v1
 
+      - name: Build Lambda functions
       - name: Create Archive
         run: |
           make archive
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/lambda.zip
-          asset_name: s3-bucket-av-lambda.zip
-          asset_content_type: application/zip
+      - name: Publish artifacts to S3
+        shell: bash
+        run: |
+          bin/generate_git_version_name.sh > version.properties
+          export $(cat version.properties | xargs)
+          aws s3 mv ./build/lambda.zip $REPO_BUCKET/s3-bucket-av-lambda-$versionName.zip
