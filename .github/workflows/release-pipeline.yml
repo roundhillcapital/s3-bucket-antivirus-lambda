@@ -20,6 +20,8 @@ jobs:
       - name: Publish artifacts to S3
         shell: bash
         run: |
-          bin/generate_git_version_name.sh > version.properties
+          pwd
+          ls
+          ./bin/generate_git_version_name.sh > version.properties
           export $(cat version.properties | xargs)
           aws s3 mv ./build/lambda.zip $REPO_BUCKET/s3-bucket-av-lambda-$versionName.zip
