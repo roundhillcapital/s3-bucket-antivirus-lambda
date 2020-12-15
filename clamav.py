@@ -66,7 +66,7 @@ def update_defs_from_s3(s3_client, bucket, prefix):
                 s3_best_time = s3_time
 
             if os.path.exists(local_path) and md5_from_file(local_path) == s3_md5:
-                print("Not downloading %s because local md5 matches s3." % filename)
+                print("Not downloading %s AV definitions because local md5 matches s3, so already up to date." % filename)
                 continue
             if s3_md5:
                 to_download[file_prefix] = {
